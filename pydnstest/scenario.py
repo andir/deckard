@@ -1,4 +1,3 @@
-import dns.message
 import dns.rrset
 import dns.rcode
 import dns.dnssec
@@ -74,6 +73,8 @@ def compare_rrs(expected, got):
     for rr in got:
         if rr not in expected:
             raise Exception("unexpected record '%s'" % rr.to_text())
+    if len(expected) != len (got):
+        raise Exception("duplicate record(s) in '%s'" % got)
     return True
 
 def compare_val(expected, got):
@@ -360,13 +361,6 @@ class Entry:
 
     def __rr_add(self, section, rr):
     	""" Merge record to existing RRSet, or append to given section. """
-
-        if rr.rdtype != dns.rdatatype.SOA:
-            for existing_rr in section:
-                if existing_rr.match(rr.name, rr.rdclass, rr.rdtype, rr.covers):
-                    existing_rr += rr
-                    return
-
         section.append(rr)
 
     def set_mandatory(self):
@@ -593,7 +587,7 @@ class Step:
         self.raw_answer = answer
         ctx.last_raw_answer = answer
         if self.raw_answer is not None:
-            self.answer = dns.message.from_wire(self.raw_answer)
+            self.answer = dns.message.from_wire(self.raw_answer,one_rr_per_rrset=True)
             log_packet(sock, answer, query = False)
         else:
             self.answer = None
